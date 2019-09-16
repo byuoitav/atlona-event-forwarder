@@ -32,7 +32,7 @@ func main() {
 
 	db := couch.NewDB(address, username, password)
 	agwList, err := db.GetDevicesByType("AtlonaGateway")
-	// log.L.Debugf("This is the length of agwlist: %d", len(agwList))
+	// log.L.Debugf("This is the name of agwlist: %s", agwList[0].ID)
 
 	if err != nil {
 		log.L.Fatalf("There was an error getting the AGWList: %v", err)
@@ -57,7 +57,7 @@ func main() {
 		}
 
 		log.L.Debugf("response from opening websocket: %s", bytes)
-		Conns[i.Name] = ws
+		Conns[i.ID] = ws
 	}
 
 	//subscribe
@@ -97,7 +97,7 @@ func main() {
 
 				for j := range Conns {
 
-					if new.Name == j {
+					if new.ID == j {
 						match = true
 						break
 					}
@@ -121,13 +121,13 @@ func main() {
 					}
 
 					log.L.Debugf("response from opening websocket: %s", bytes)
-					Conns[new.Name] = ws
+					Conns[new.ID] = ws
 					err = ws.WriteMessage(websocket.BinaryMessage, []byte(`{"callBackId":4,"data":{"action":"SetCurrentPage","state":"{\"Page\":\"roomModifyDevices\"}","controller":"App"}}`))
 					if err != nil {
 						log.L.Debugf("unable to read message: %s", err)
 					}
 
-					go connection.ReadMessage(ws, new.Name)
+					go connection.ReadMessage(ws, new.ID)
 				}
 			}
 		} else if len(Conns) > len(newAGWList) {
@@ -135,7 +135,7 @@ func main() {
 			for i := range Conns {
 				found = false
 				for _, x := range newAGWList {
-					if i == x.Name {
+					if i == x.ID {
 						found = true
 						break
 					}

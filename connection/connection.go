@@ -1,14 +1,14 @@
 package connection
 
 import (
-	"bytes"
 	"encoding/json"
 	"net"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/byuoitav/central-event-system/hub/base"
+	"github.com/byuoitav/central-event-system/messenger"
 	"github.com/byuoitav/common/log"
 	"github.com/byuoitav/common/v2/events"
 	"github.com/gorilla/websocket"
@@ -19,11 +19,6 @@ var (
 	username = os.Getenv("DB_USERNAME")
 	password = os.Getenv("DB_PASSWORD")
 )
-
-type key struct {
-	Key     string      `json:"Key"`
-	Content interface{} `json:"Content"`
-}
 
 type deviceUpdateContent struct {
 	ID         string `json:"Id"`
@@ -36,6 +31,10 @@ type deviceUpdateContent struct {
 
 //ReadMessage will read the messages from each websocket
 func ReadMessage(ws *websocket.Conn, name string) {
+	messenger, nerr := messenger.BuildMessenger(os.Getenv("HUB_ADDRESS"), base.Messenger, 1000)
+	if nerr != nil {
+		log.L.Debugf("There was an error building the messenger: %s", nerr.Error())
+	}
 	for {
 		_, bytes, err := ws.ReadMessage()
 		if err != nil {
@@ -52,15 +51,16 @@ func ReadMessage(ws *websocket.Conn, name string) {
 		case strings.Contains(str, "\"Key\":\"KeepAliveSocket\""):
 		case strings.Contains(str, "\"Key\":\"Store\""):
 		case strings.Contains(str, "\"Key\":\"DeviceUpdate\""):
-			var k key
-			k.Content = deviceUpdateContent{}
+			k := struct {
+				Key     string              `json:"Key"`
+				Content deviceUpdateContent `json:"Content"`
+			}{}
 			err = json.Unmarshal([]byte(str), &k)
 			if err != nil {
 				log.L.Debugf("There was an error unmarshaling the json: %s", err)
 				continue
 			}
-			content := k.Content.(deviceUpdateContent)
-			hostnameSearch, err := net.LookupAddr(content.IPAddress)
+			hostnameSearch, err := net.LookupAddr(k.Content.IPAddress)
 			if err != nil {
 				log.L.Debugf("There was an error retrieving the hostname: %s", err)
 			}
@@ -75,53 +75,69 @@ func ReadMessage(ws *websocket.Conn, name string) {
 				DeviceID:      hostname,
 			}
 			log.L.Debugf("Here is the response: %s", str)
-			if content.Connected == true {
+			if k.Content.Connected == true {
 				connectedEvent := events.Event{
 					Timestamp:        time,
 					GeneratingSystem: name,
 					TargetDevice:     deviceInfo,
-					Key:              "online",
+					Key:              "oline",
 					Value:            "Online",
 				}
-				forwardEvent(connectedEvent)
-			} else if content.Connected == false {
+				// forwardEvent(connectedEvent)
+				messenger.SendEvent(connectedEvent)
+			} else if k.Content.Connected == false {
 				connectedEvent := events.Event{
 					Timestamp:        time,
 					GeneratingSystem: name,
 					TargetDevice:     deviceInfo,
-					Key:              "online",
+					Key:              "oline",
 					Value:            "Offline",
 				}
-				forwardEvent(connectedEvent)
+				// forwardEvent(connectedEvent)
+				messenger.SendEvent(connectedEvent)
 			}
 			addressEvent := events.Event{
 				Timestamp:        time,
 				GeneratingSystem: name,
 				TargetDevice:     deviceInfo,
-				Key:              "ip-address",
-				Value:            content.IPAddress,
+				Key:              "ip-adress",
+				Value:            k.Content.IPAddress,
 			}
-			forwardEvent(addressEvent)
+			// forwardEvent(addressEvent)
+			messenger.SendEvent(addressEvent)
 		}
 	}
 }
 
 func forwardEvent(e events.Event) {
 	// FWD_ENPOINTS should be a string of all of the forwarding urls separated by commas w/o spaces
-	fwdEndpointsString := os.Getenv("FWD_ENDPOINTS")
-	fwdEndpoints := strings.Split(fwdEndpointsString, ",")
-
-	// now we need to determine what messages we care about and how to send them on
-	// post to smee using the /event endpoint
-	for _, i := range fwdEndpoints {
-		derek, err := json.Marshal(e)
-		if err != nil {
-			log.L.Debugf("There was an error marshaling the json: %s", err)
-		}
-		response, err := http.NewRequest("POST", i, bytes.NewReader(derek))
-		if err != nil {
-			log.L.Debugf("There was an error forwarding the event to %s: %s", i, err)
-		}
-		log.L.Debugf("Response from posting to %s: %s", i, response)
+	// fwdEndpointsString := os.Getenv("FWD_ENDPOINTS")
+	// fwdEndpoints := strings.Split(fwdEndpointsString, ",")
+	// fmt.Printf(fwdEndpoints[0])
+	messenger, nerr := messenger.BuildMessenger(os.Getenv("HUB_ADDRESS"), base.Messenger, 1000)
+	if nerr != nil {
+		log.L.Debugf("There was an error building the messenger: %s", nerr.Error())
 	}
+
+	messenger.SendEvent(e)
+
+	// for _, i := range fwdEndpoints {
+
+	// derek, err := json.Marshal(e)
+	// if err != nil {
+	// 	log.L.Debugf("There was an error marshaling the json: %s", err)
+	// }
+	// fmt.Printf("This is the body: %s\n", derek)
+	// req, err := http.NewRequest("POST", i, bytes.NewReader(derek))
+	// if err != nil {
+	// 	log.L.Debugf("There was an error generating the for endpoint %s: %s", i, err)
+	// }
+
+	// client := &http.Client{}
+	// response, err := client.Do(req)
+	// if err != nil {
+	// 	log.L.Debugf("There was an error forwarding the event to %s: %s", i, err)
+	// }
+	// log.L.Debugf("Response from posting to %s: %v", i, response)
+	// }
 }
