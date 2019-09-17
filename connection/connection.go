@@ -80,64 +80,28 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					Timestamp:        time,
 					GeneratingSystem: name,
 					TargetDevice:     deviceInfo,
-					Key:              "oline",
+					Key:              "online",
 					Value:            "Online",
 				}
-				// forwardEvent(connectedEvent)
 				messenger.SendEvent(connectedEvent)
 			} else if k.Content.Connected == false {
 				connectedEvent := events.Event{
 					Timestamp:        time,
 					GeneratingSystem: name,
 					TargetDevice:     deviceInfo,
-					Key:              "oline",
+					Key:              "online",
 					Value:            "Offline",
 				}
-				// forwardEvent(connectedEvent)
 				messenger.SendEvent(connectedEvent)
 			}
 			addressEvent := events.Event{
 				Timestamp:        time,
 				GeneratingSystem: name,
 				TargetDevice:     deviceInfo,
-				Key:              "ip-adress",
+				Key:              "ip-address",
 				Value:            k.Content.IPAddress,
 			}
-			// forwardEvent(addressEvent)
 			messenger.SendEvent(addressEvent)
 		}
 	}
-}
-
-func forwardEvent(e events.Event) {
-	// FWD_ENPOINTS should be a string of all of the forwarding urls separated by commas w/o spaces
-	// fwdEndpointsString := os.Getenv("FWD_ENDPOINTS")
-	// fwdEndpoints := strings.Split(fwdEndpointsString, ",")
-	// fmt.Printf(fwdEndpoints[0])
-	messenger, nerr := messenger.BuildMessenger(os.Getenv("HUB_ADDRESS"), base.Messenger, 1000)
-	if nerr != nil {
-		log.L.Debugf("There was an error building the messenger: %s", nerr.Error())
-	}
-
-	messenger.SendEvent(e)
-
-	// for _, i := range fwdEndpoints {
-
-	// derek, err := json.Marshal(e)
-	// if err != nil {
-	// 	log.L.Debugf("There was an error marshaling the json: %s", err)
-	// }
-	// fmt.Printf("This is the body: %s\n", derek)
-	// req, err := http.NewRequest("POST", i, bytes.NewReader(derek))
-	// if err != nil {
-	// 	log.L.Debugf("There was an error generating the for endpoint %s: %s", i, err)
-	// }
-
-	// client := &http.Client{}
-	// response, err := client.Do(req)
-	// if err != nil {
-	// 	log.L.Debugf("There was an error forwarding the event to %s: %s", i, err)
-	// }
-	// log.L.Debugf("Response from posting to %s: %v", i, response)
-	// }
 }

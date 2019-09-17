@@ -32,12 +32,11 @@ func main() {
 
 	db := couch.NewDB(address, username, password)
 	agwList, err := db.GetDevicesByType("AtlonaGateway")
-	// log.L.Debugf("This is the name of agwlist: %s", agwList[0].ID)
 
 	if err != nil {
 		log.L.Fatalf("There was an error getting the AGWList: %v", err)
 	}
-	// fmt.Printf("Length of list and contents: %d %s\n", len(agwList), agwList[0].Address)
+	log.L.Debugf("Length of AGWlist and contents: %d %s\n", len(agwList))
 
 	Conns = make(map[string]*websocket.Conn)
 	for _, i := range agwList {
@@ -122,6 +121,7 @@ func main() {
 
 					log.L.Debugf("response from opening websocket: %s", bytes)
 					Conns[new.ID] = ws
+					//this is the message that tells the gateway to send device update events
 					err = ws.WriteMessage(websocket.BinaryMessage, []byte(`{"callBackId":4,"data":{"action":"SetCurrentPage","state":"{\"Page\":\"roomModifyDevices\"}","controller":"App"}}`))
 					if err != nil {
 						log.L.Debugf("unable to read message: %s", err)
