@@ -18,7 +18,7 @@ var (
 	address  = os.Getenv("DB_ADDRESS")
 	username = os.Getenv("DB_USERNAME")
 	password = os.Getenv("DB_PASSWORD")
-	Conns    map[string]*websocket.Conn
+	conns    map[string]*websocket.Conn
 )
 
 func init() {
@@ -38,7 +38,7 @@ func main() {
 	}
 	log.L.Debugf("Length of AGWlist and contents: %d %s\n", len(agwList))
 
-	Conns = make(map[string]*websocket.Conn)
+	conns = make(map[string]*websocket.Conn)
 	for _, i := range agwList {
 		dialer := &websocket.Dialer{}
 		address := "ws://"
@@ -56,17 +56,17 @@ func main() {
 		}
 
 		log.L.Debugf("response from opening websocket: %s", bytes)
-		Conns[i.ID] = ws
+		conns[i.ID] = ws
 	}
 
 	//subscribe
-	for i := range Conns {
-		err = Conns[i].WriteMessage(websocket.BinaryMessage, []byte(`{"callBackId":4,"data":{"action":"SetCurrentPage","state":"{\"Page\":\"roomModifyDevices\"}","controller":"App"}}`))
+	for i := range conns {
+		err = conns[i].WriteMessage(websocket.BinaryMessage, []byte(`{"callBackId":4,"data":{"action":"SetCurrentPage","state":"{\"Page\":\"roomModifyDevices\"}","controller":"App"}}`))
 		if err != nil {
 			log.L.Debugf("unable to read message: %s", err)
 		}
 
-		go connection.ReadMessage(Conns[i], i)
+		go connection.ReadMessage(conns[i], i)
 	}
 
 	for {
@@ -84,7 +84,7 @@ func main() {
 		}
 
 		//check to see if the length is different
-		if len(Conns) < len(newAGWList) {
+		if len(conns) < len(newAGWList) {
 			newList := make([]structs.Device, len(agwList))
 			copy(newList, agwList)
 			log.L.Debugf("comparing the list with the map to find the new one")
@@ -94,7 +94,7 @@ func main() {
 				new := newList[i]
 				match := false
 
-				for j := range Conns {
+				for j := range conns {
 
 					if new.ID == j {
 						match = true
@@ -120,7 +120,7 @@ func main() {
 					}
 
 					log.L.Debugf("response from opening websocket: %s", bytes)
-					Conns[new.ID] = ws
+					conns[new.ID] = ws
 					//this is the message that tells the gateway to send device update events
 					err = ws.WriteMessage(websocket.BinaryMessage, []byte(`{"callBackId":4,"data":{"action":"SetCurrentPage","state":"{\"Page\":\"roomModifyDevices\"}","controller":"App"}}`))
 					if err != nil {
@@ -130,9 +130,9 @@ func main() {
 					go connection.ReadMessage(ws, new.ID)
 				}
 			}
-		} else if len(Conns) > len(newAGWList) {
+		} else if len(conns) > len(newAGWList) {
 			var found bool
-			for i := range Conns {
+			for i := range conns {
 				found = false
 				for _, x := range newAGWList {
 					if i == x.ID {
@@ -141,7 +141,7 @@ func main() {
 					}
 				}
 				if found == false {
-					delete(Conns, i)
+					delete(conns, i)
 				}
 			}
 		}
