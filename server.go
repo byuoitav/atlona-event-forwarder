@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.L.Fatalf("There was an error getting the AGWList: %v", err)
 	}
-	log.L.Debugf("Length of AGWlist and contents: %d %s\n", len(agwList))
+	log.L.Debugf("Length of AGWlist: %d", len(agwList))
 
 	conns = make(map[string]*websocket.Conn)
 	for _, i := range agwList {
