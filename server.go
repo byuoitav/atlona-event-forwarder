@@ -28,8 +28,7 @@ func init() {
 }
 
 func main() {
-	log.SetLevel("debug")
-
+	//log.SetLevel("debug")
 	db := couch.NewDB(address, username, password)
 	agwList, err := db.GetDevicesByType("AtlonaGateway")
 
