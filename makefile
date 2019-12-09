@@ -1,11 +1,7 @@
 # vars
 ORG=$(shell echo $(CIRCLE_PROJECT_USERNAME))
 BRANCH=$(shell echo $(CIRCLE_BRANCH))
-NAME=$(shell echo $(CIRCLE_PROJECT_REPONAME))
-
-ifeq ($(NAME),)
-NAME := $(shell basename "$(PWD)")
-endif
+NAME=atlona-forwarder
 
 ifeq ($(ORG),)
 ORG=byuoitav

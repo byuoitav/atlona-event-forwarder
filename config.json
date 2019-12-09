@@ -1,5 +1,5 @@
 {
-    "name": "atlona-event-forwarder",
+    "name": "atlona-forwarder",
     "port": "",
     "env-vars": [
         "DB_ADDRESS",
@@ -7,7 +7,6 @@
         "DB_USERNAME",
         "HUB_ADDRESS",
         "LOG_LEVEL",
-        "ROOM_SYSTEM",
         "STOP_REPLICATION"
     ]
 }
