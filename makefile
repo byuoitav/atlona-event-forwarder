@@ -53,7 +53,7 @@ clean:
 	rm -f $(NAME)-arm
 	rm -rf $(NG1)-dist
 
-run: $(NAME)-bin $(NG1)-dist
+run: $(NAME)-bin
 	./$(NAME)-bin
 
 deps:
@@ -68,7 +68,7 @@ endif
 
 docker: docker-x86 
 
-docker-x86: $(NAME)-bin $(NG1)-dist
+docker-x86: $(NAME)-bin
 ifeq "$(BRANCH)" "master"
 	$(eval BRANCH=development)
 endif
@@ -89,6 +89,3 @@ endif
 ### deps
 $(NAME)-bin:
 	$(MAKE) build-x86
-
-$(NG1)-dist:
-	$(MAKE) build-web
