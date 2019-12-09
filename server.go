@@ -18,6 +18,7 @@ var (
 	address  = os.Getenv("DB_ADDRESS")
 	username = os.Getenv("DB_USERNAME")
 	password = os.Getenv("DB_PASSWORD")
+	loglevel = os.Getenv("LOG_LEVEL")
 	conns    map[string]*websocket.Conn
 )
 
@@ -28,7 +29,7 @@ func init() {
 }
 
 func main() {
-	//log.SetLevel("debug")
+	log.SetLevel(loglevel)
 	db := couch.NewDB(address, username, password)
 	agwList, err := db.GetDevicesByType("AtlonaGateway")
 
