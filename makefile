@@ -35,26 +35,14 @@ UNAME=$(shell echo $(DOCKER_USERNAME))
 EMAIL=$(shell echo $(DOCKER_EMAIL))
 PASS=$(shell echo $(DOCKER_PASSWORD))
 
-# angular
-NPM=npm
-NPM_INSTALL=$(NPM) install
-NG_BUILD=ng build --prod --aot --build-optimizer 
-NG1=web
-
 all: build docker
 
 ci: deps build docker
 
-build: build-x86  build-web
+build: build-x86
 
 build-x86:
 	env GOOS=linux CGO_ENABLED=0 $(GOBUILD) -o $(NAME)-bin -v
-
-build-web: $(NG1)
-	# ng1
-	cd $(NG1) && $(NPM_INSTALL) && $(NG_BUILD) --base-href="/"
-	rm -rf $(NG1)-dist
-	mv -f $(NG1)/dist/$(NG1) $(NG1)-dist
 
 test: 
 	$(GOTEST) -v -race $(go list ./... | grep -v /vendor/) 
