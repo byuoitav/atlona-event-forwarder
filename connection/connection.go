@@ -72,16 +72,18 @@ func ReadMessage(ws *websocket.Conn, name string) {
 			}
 			deviceInfo := events.BasicDeviceInfo{
 				BasicRoomInfo: roomInfo,
-				DeviceID:      hostname,
+				DeviceID:      name,
 			}
 			log.L.Debugf("Here is the response: %s", str)
 			if k.Content.Connected == true {
 				connectedEvent := events.Event{
 					Timestamp:        time,
 					GeneratingSystem: name,
+					EventTags:        []string{"heartbeat", "auto-generated"},
 					TargetDevice:     deviceInfo,
 					Key:              "online",
 					Value:            "Online",
+					Data:             hostname,
 				}
 				messenger.SendEvent(connectedEvent)
 			} else if k.Content.Connected == false {
@@ -91,6 +93,7 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					TargetDevice:     deviceInfo,
 					Key:              "online",
 					Value:            "Offline",
+					Data:             hostname,
 				}
 				messenger.SendEvent(connectedEvent)
 			}
@@ -100,6 +103,7 @@ func ReadMessage(ws *websocket.Conn, name string) {
 				TargetDevice:     deviceInfo,
 				Key:              "ip-address",
 				Value:            k.Content.IPAddress,
+				Data:             hostname,
 			}
 			messenger.SendEvent(addressEvent)
 		}

@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/byuoitav/atlona-event-forwarder/connection"
+	"github.com/byuoitav/common"
 	"github.com/gorilla/websocket"
 
 	"github.com/byuoitav/common/db/couch"
@@ -29,7 +31,18 @@ func init() {
 }
 
 func main() {
+	router := common.NewRouter()
+	port := "9998"
+
+	server := http.Server{
+		Addr:           port,
+		MaxHeaderBytes: 1024 * 10,
+	}
+
+	router.StartServer(&server)
+
 	log.SetLevel(loglevel)
+
 	db := couch.NewDB(address, username, password)
 	agwList, err := db.GetDevicesByType("AtlonaGateway")
 
