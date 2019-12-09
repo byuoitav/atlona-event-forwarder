@@ -1,0 +1,13 @@
+{
+    "name": "atlona-event-forwarder",
+    "port": "",
+    "env-vars": [
+        "DB_ADDRESS",
+        "DB_PASSWORD",
+        "DB_USERNAME",
+        "HUB_ADDRESS",
+        "LOG_LEVEL",
+        "ROOM_SYSTEM",
+        "STOP_REPLICATION"
+    ]
+}
