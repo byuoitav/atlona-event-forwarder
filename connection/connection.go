@@ -46,6 +46,8 @@ func ReadMessage(ws *websocket.Conn, name string) {
 
 		time := time.Now()
 
+		log.L.Debugf("Message Received: %s", str)
+
 		switch {
 		//these are other events that get sent but we don't use them
 		case strings.Contains(str, "\"Key\":\"KeepAliveSocket\""):
@@ -55,26 +57,34 @@ func ReadMessage(ws *websocket.Conn, name string) {
 				Key     string              `json:"Key"`
 				Content deviceUpdateContent `json:"Content"`
 			}{}
+
 			err = json.Unmarshal([]byte(str), &k)
+
 			if err != nil {
 				log.L.Debugf("There was an error unmarshaling the json: %s", err)
 				continue
 			}
+
 			hostnameSearch, err := net.LookupAddr(k.Content.IPAddress)
+			hostname := ""
+			info := []string{"", ""}
 			if err != nil {
 				log.L.Debugf("There was an error retrieving the hostname: %s", err)
+			} else {
+				hostname = strings.Trim(hostnameSearch[0], ".byu.edu.")
+				info = strings.Split(hostname, "-")
 			}
-			hostname := strings.Trim(hostnameSearch[0], ".byu.edu.")
-			info := strings.Split(hostname, "-")
+
 			roomInfo := events.BasicRoomInfo{
 				BuildingID: info[0],
 				RoomID:     info[1],
 			}
+
 			deviceInfo := events.BasicDeviceInfo{
 				BasicRoomInfo: roomInfo,
 				DeviceID:      name,
 			}
-			log.L.Debugf("Here is the response: %s", str)
+
 			if k.Content.Connected == true {
 				connectedEvent := events.Event{
 					Timestamp:        time,
@@ -85,6 +95,7 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					Value:            "Online",
 					Data:             hostname,
 				}
+				log.L.Debugf("Sending event: %+v", connectedEvent)
 				messenger.SendEvent(connectedEvent)
 			} else if k.Content.Connected == false {
 				connectedEvent := events.Event{
@@ -95,8 +106,10 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					Value:            "Offline",
 					Data:             hostname,
 				}
+				log.L.Debugf("Sending event: %+v", connectedEvent)
 				messenger.SendEvent(connectedEvent)
 			}
+
 			addressEvent := events.Event{
 				Timestamp:        time,
 				GeneratingSystem: name,
@@ -105,6 +118,8 @@ func ReadMessage(ws *websocket.Conn, name string) {
 				Value:            k.Content.IPAddress,
 				Data:             hostname,
 			}
+
+			log.L.Debugf("Sending event: %+v", addressEvent)
 			messenger.SendEvent(addressEvent)
 		}
 	}
