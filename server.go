@@ -17,16 +17,17 @@ import (
 )
 
 var (
-	address  = os.Getenv("DB_ADDRESS")
-	username = os.Getenv("DB_USERNAME")
-	password = os.Getenv("DB_PASSWORD")
-	loglevel = os.Getenv("LOG_LEVEL")
-	conns    map[string]*websocket.Conn
+	address            = os.Getenv("DB_ADDRESS")
+	username           = os.Getenv("DB_USERNAME")
+	password           = os.Getenv("DB_PASSWORD")
+	loglevel           = os.Getenv("LOG_LEVEL")
+	eventProcessorHost = os.Getenv("EVENT_PROCESSOR_HOST")
+	conns              map[string]*websocket.Conn
 )
 
 func init() {
-	if len(address) == 0 || len(username) == 0 || len(password) == 0 {
-		log.L.Fatalf("One of DB_ADDRESS, DB_USERNAME, DB_PASSWORD is not set. Failing...")
+	if len(address) == 0 || len(username) == 0 || len(password) == 0 || len(eventProcessorHost) == 0 {
+		log.L.Fatalf("One of DB_ADDRESS, DB_USERNAME, DB_PASSWORD, EVENT_PROCESSOR_HOST is not set. Failing...")
 	}
 }
 

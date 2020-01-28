@@ -1,23 +1,25 @@
 package connection
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/byuoitav/central-event-system/hub/base"
-	"github.com/byuoitav/central-event-system/messenger"
 	"github.com/byuoitav/common/log"
 	"github.com/byuoitav/common/v2/events"
 	"github.com/gorilla/websocket"
 )
 
 var (
-	address  = os.Getenv("DB_ADDRESS")
-	username = os.Getenv("DB_USERNAME")
-	password = os.Getenv("DB_PASSWORD")
+	address            = os.Getenv("DB_ADDRESS")
+	username           = os.Getenv("DB_USERNAME")
+	password           = os.Getenv("DB_PASSWORD")
+	eventProcessorHost = os.Getenv("EVENT_PROCESSOR_HOST")
 )
 
 type deviceUpdateContent struct {
@@ -31,10 +33,14 @@ type deviceUpdateContent struct {
 
 //ReadMessage will read the messages from each websocket
 func ReadMessage(ws *websocket.Conn, name string) {
-	messenger, nerr := messenger.BuildMessenger(os.Getenv("HUB_ADDRESS"), base.Messenger, 1000)
-	if nerr != nil {
-		log.L.Debugf("There was an error building the messenger: %s", nerr.Error())
-	}
+
+	//MB 1-28-2020 - changing to just send the event over HTTP
+	/*
+		messenger, nerr := messenger.BuildMessenger(os.Getenv("HUB_ADDRESS"), base.Messenger, 1000)
+		if nerr != nil {
+			log.L.Debugf("There was an error building the messenger: %s", nerr.Error())
+		}
+	*/
 	for {
 		_, bytes, err := ws.ReadMessage()
 		if err != nil {
@@ -96,7 +102,7 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					Data:             hostname,
 				}
 				log.L.Debugf("Sending event: %+v", connectedEvent)
-				messenger.SendEvent(connectedEvent)
+				sendEvent(connectedEvent)
 			} else if k.Content.Connected == false {
 				connectedEvent := events.Event{
 					Timestamp:        time,
@@ -107,7 +113,7 @@ func ReadMessage(ws *websocket.Conn, name string) {
 					Data:             hostname,
 				}
 				log.L.Debugf("Sending event: %+v", connectedEvent)
-				messenger.SendEvent(connectedEvent)
+				sendEvent(connectedEvent)
 			}
 
 			addressEvent := events.Event{
@@ -120,7 +126,60 @@ func ReadMessage(ws *websocket.Conn, name string) {
 			}
 
 			log.L.Debugf("Sending event: %+v", addressEvent)
-			messenger.SendEvent(addressEvent)
+			sendEvent(addressEvent)
 		}
 	}
+}
+
+func sendEvent(x events.Event) error {
+	// marshal request if not already an array of bytes
+	reqBody, err := json.Marshal(x)
+	if err != nil {
+		log.L.Debugf("Unable to marshal event %v, error:%v", x, err)
+		return err
+	}
+
+	eventProcessorHostList := strings.Split(eventProcessorHost, ",")
+
+	for _, hostName := range eventProcessorHostList {
+
+		// create the request
+		log.L.Debugf("Sending to address %s", hostName)
+
+		req, err := http.NewRequest("POST", hostName, bytes.NewReader(reqBody))
+		if err != nil {
+			log.L.Debugf("Unable to post body %v, error:%v", reqBody, err)
+			//return []byte{}, nerr.Translate(err)
+		}
+
+		//no auth needed for state parser
+		//req.SetBasicAuth(username, password)
+
+		// add headers
+		req.Header.Add("content-type", "application/json")
+
+		client := http.Client{
+			Timeout: 5 * time.Second,
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			log.L.Debugf("error sending request: %v", err)
+		} else {
+			defer resp.Body.Close()
+			// read the resp
+			respBody, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.L.Debugf("error reading body: %v", err)
+			} else {
+
+				// check resp code
+				if resp.StatusCode/100 != 2 {
+					log.L.Debugf("non 200 reponse code received. code: %v, body: %s", resp.StatusCode, respBody)
+				}
+			}
+		}
+	}
+
+	return nil
 }
