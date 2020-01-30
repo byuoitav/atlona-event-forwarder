@@ -31,6 +31,21 @@ type deviceUpdateContent struct {
 	Aliases    string `json:"Aliases"`
 }
 
+//SendKeepAlive will keep the connection alive
+func SendKeepAlive(ws *websocket.Conn, name string) {
+	//MB 1-30-2020 - sending a {"Ping":"Pong"} every minute or so
+	log.L.Debugf("Starting Ping:Pong handler for %v", name)
+	for {
+		log.L.Debugf("Sending Ping:Pong for %v", name)
+		err := ws.WriteMessage(websocket.BinaryMessage, []byte(`{"Ping":"Pong"}`))
+		if err != nil {
+			log.L.Debugf("unable to write ping-pong message for %v: %s", name, err)
+		}
+
+		time.Sleep(60 * time.Second)
+	}
+}
+
 //ReadMessage will read the messages from each websocket
 func ReadMessage(ws *websocket.Conn, name string) {
 

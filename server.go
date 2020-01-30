@@ -81,12 +81,13 @@ func main() {
 		}
 
 		go connection.ReadMessage(conns[i], i)
+		go connection.SendKeepAlive(conns[i], i)
 	}
 
 	for {
 		//wait some time
 		log.L.Debugf("Waiting to check for list changes")
-		time.Sleep(5 * time.Minute)
+		time.Sleep(1 * time.Minute)
 
 		log.L.Debugf("Checking AGWList for changes")
 
@@ -142,6 +143,7 @@ func main() {
 					}
 
 					go connection.ReadMessage(ws, new.ID)
+					go connection.SendKeepAlive(ws, new.ID)
 				}
 			}
 		} else if len(conns) > len(newAGWList) {
