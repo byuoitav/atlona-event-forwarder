@@ -1,87 +1,54 @@
-# vars
-ORG=$(shell echo $(CIRCLE_PROJECT_USERNAME))
-BRANCH=$(shell echo $(CIRCLE_BRANCH))
-NAME=atlona-forwarder
+NAME := atlona-event-forwarder
+OWNER := byuoitav
+PKG := github.com/${OWNER}/${NAME}
+DOCKER_URL := docker.pkg.github.com
 
-ifeq ($(ORG),)
-ORG=byuoitav
+# version:
+# use the git tag, if this commit
+# doesn't have a tag, use the git hash
+VERSION := $(shell git rev-parse HEAD)
+ifneq ($(shell git describe --exact-match --tags HEAD 2> /dev/null),)
+	VERSION = $(shell git describe --exact-match --tags HEAD)
 endif
 
-ifeq ($(BRANCH),)
-BRANCH:= $(shell git rev-parse --abbrev-ref HEAD)
-endif
+# go stuff
+PKG_LIST := $(shell cd backend && go list ${PKG}/...)
 
-# go
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
-VENDOR=gvt fetch -branch $(BRANCH)
+.PHONY: all deps build test test-cov clean
 
-# docker 
-DOCKER=docker
-DOCKER_BUILD=$(DOCKER) build
-DOCKER_LOGIN=$(DOCKER) login -u $(UNAME) -p $(PASS)
-DOCKER_PUSH=$(DOCKER) push
-DOCKER_FILE=dockerfile
-DOCKER_FILE_ARM=dockerfile-arm
+all: clean build
 
-UNAME=$(shell echo $(DOCKER_USERNAME))
-EMAIL=$(shell echo $(DOCKER_EMAIL))
-PASS=$(shell echo $(DOCKER_PASSWORD))
+test:
+	@cd backend && go test -v ${PKG_LIST} && pwd
 
-all: build docker
+test-cov:
+	@cd backend && go test -coverprofile=coverage.txt -covermode=atomic ${PKG_LIST}
 
-ci: deps build docker
-
-build: build-x86
-
-build-x86:
-	env GOOS=linux CGO_ENABLED=0 $(GOBUILD) -o $(NAME)-bin -v
-
-test: 
-	$(GOTEST) -v -race $(go list ./... | grep -v /vendor/) 
-
-clean: 
-	$(GOCLEAN)
-	rm -f $(NAME)-bin
-	rm -f $(NAME)-arm
-	rm -rf $(NG1)-dist
-
-run: $(NAME)-bin
-	./$(NAME)-bin
+lint:
+	@cd backend && golangci-lint run --tests=false
 
 deps:
-	npm config set unsafe-perm true
-	$(NPM_INSTALL) -g @angular/cli@latest
-	$(GOGET) -d -v
-ifneq "$(BRANCH)" "master"
-	# put vendored packages in here
-	# e.g. $(VENDOR) github.com/byuoitav/event-router-microservice
-	gvt fetch -tag v3.3.10 github.com/labstack/echo
-endif
+	@echo Downloading dependencies...
+	@cd backend && go mod download
 
-docker: docker-x86 
+build: deps
+	@mkdir -p dist
+	@echo Building backend...
+	@cd backend && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ../dist/${NAME}-linux-amd64 ${PKG}
 
-docker-x86: $(NAME)-bin
-ifeq "$(BRANCH)" "master"
-	$(eval BRANCH=development)
-endif
-ifeq "$(BRANCH)" "production"
-	$(eval BRANCH=latest)
-endif
-	$(DOCKER_BUILD) --build-arg NAME=$(NAME) -f $(DOCKER_FILE) -t $(ORG)/$(NAME):$(BRANCH) .
-	@echo logging in to dockerhub...
-	@$(DOCKER_LOGIN)
-	$(DOCKER_PUSH) $(ORG)/$(NAME):$(BRANCH)
-ifeq "$(BRANCH)" "latest"
-	$(eval BRANCH=production)
-endif
-ifeq "$(BRANCH)" "development"
-	$(eval BRANCH=master)
-endif
+	@echo Build output is located in ./dist/.
 
-### deps
-$(NAME)-bin:
-	$(MAKE) build-x86
+docker: clean build
+	@echo Building container ${DOCKER_URL}/${OWNER}/${NAME}/${NAME}:${VERSION}
+	@docker build -f dockerfile -t ${DOCKER_URL}/${OWNER}/${NAME}/${NAME}:${VERSION} dist
+
+deploy: docker
+	@echo Logging into Github Package Registry
+	@docker login ${DOCKER_URL} -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
+
+	@echo Pushing container ${DOCKER_URL}/${OWNER}/${NAME}/${NAME}:${VERSION}
+	@docker push ${DOCKER_URL}/${OWNER}/${NAME}/${NAME}:${VERSION}
+
+clean:
+	@cd backend && go clean
+	@rm -rf dist/

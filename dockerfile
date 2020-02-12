@@ -1,10 +1,6 @@
-FROM byuoitav/amd64-alpine
+FROM gcr.io/distroless/static
 MAINTAINER Daniel Randall <danny_randall@byu.edu>
 
-ARG NAME
-ENV name=${NAME}
+COPY atlona-event-forwarder-linux-amd64 /atlona-event-forwarder
 
-COPY ${name}-bin ${name}-bin 
-COPY version.txt version.txt
-
-ENTRYPOINT ./${name}-bin
+ENTRYPOINT ["/atlona-event-forwarder"]
