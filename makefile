@@ -12,29 +12,29 @@ ifneq ($(shell git describe --exact-match --tags HEAD 2> /dev/null),)
 endif
 
 # go stuff
-PKG_LIST := $(shell cd backend && go list ${PKG}/...)
+PKG_LIST := $(shell go list ${PKG}/...)
 
 .PHONY: all deps build test test-cov clean
 
 all: clean build
 
 test:
-	@cd backend && go test -v ${PKG_LIST} && pwd
+	@go test -v ${PKG_LIST} && pwd
 
 test-cov:
-	@cd backend && go test -coverprofile=coverage.txt -covermode=atomic ${PKG_LIST}
+	@go test -coverprofile=coverage.txt -covermode=atomic ${PKG_LIST}
 
 lint:
-	@cd backend && golangci-lint run --tests=false
+	@golangci-lint run --tests=false
 
 deps:
 	@echo Downloading dependencies...
-	@cd backend && go mod download
+	@go mod download
 
 build: deps
 	@mkdir -p dist
-	@echo Building backend...
-	@cd backend && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ../dist/${NAME}-linux-amd64 ${PKG}
+	@echo Building server...
+	env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./dist/${NAME}-linux-amd64 ${PKG}
 
 	@echo Build output is located in ./dist/.
 
@@ -50,5 +50,5 @@ deploy: docker
 	@docker push ${DOCKER_URL}/${OWNER}/${NAME}/${NAME}:${VERSION}
 
 clean:
-	@cd backend && go clean
+	@go clean
 	@rm -rf dist/
