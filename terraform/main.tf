@@ -48,8 +48,8 @@ module "deployment" {
   // required
   name           = "atlona-event-forwarder"
   image          = "docker.pkg.github.com/byuoitav/atlona-event-forwarder/atlona-event-forwarder"
-  image_version  = "v0.1.1"
-  container_port = 8080
+  image_version  = "v0.1.2"
+  container_port = 9998
   repo_url       = "https://github.com/byuoitav/atlona-event-forwarder"
 
   // optional
