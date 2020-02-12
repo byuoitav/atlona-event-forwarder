@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/byuoitav/atlona-event-forwarder/connection"
-	"github.com/byuoitav/common"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo"
 
 	"github.com/byuoitav/common/db/couch"
 	"github.com/byuoitav/common/log"
@@ -32,15 +32,13 @@ func init() {
 }
 
 func main() {
-	router := common.NewRouter()
-	port := "9998"
+	e := echo.New()
 
-	server := http.Server{
-		Addr:           port,
-		MaxHeaderBytes: 1024 * 10,
-	}
+	e.GET("/healthz", func(c echo.Context) error {
+		return c.String(http.StatusOK, "healthy")
+	})
 
-	router.StartServer(&server)
+	go e.Start(":9998")
 
 	log.SetLevel(loglevel)
 
