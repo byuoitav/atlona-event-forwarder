@@ -59,7 +59,7 @@ module "deployment" {
     "DB_USERNAME"          = data.aws_ssm_parameter.couch_username.value
     "DB_PASSWORD"          = data.aws_ssm_parameter.couch_password.value
     "EVENT_PROCESSOR_HOST" = data.aws_ssm_parameter.event_processor_host.value
-    "LOG_LEVEL"            = "info"
+    "LOG_LEVEL"            = "debug"
     "STOP_REPLICATION"     = "true"
   }
 }
