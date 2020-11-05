@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/byuoitav/atlona-event-forwarder/connection"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
 
-	"github.com/byuoitav/common/db/couch"
+	"github.com/byuoitav/atlona-event-forwarder/connection"
 	"github.com/byuoitav/common/log"
-	"github.com/byuoitav/common/structs"
+	_ "github.com/go-kivik/couchdb/v3"
+	kivik "github.com/go-kivik/kivik/v3"
 )
 
 var (
@@ -31,6 +33,11 @@ func init() {
 	}
 }
 
+type device struct {
+	ID      string `json:"_id"`
+	Address string `json:"address"`
+}
+
 func main() {
 	e := echo.New()
 
@@ -42,12 +49,40 @@ func main() {
 
 	log.SetLevel(loglevel)
 
-	db := couch.NewDB(address, username, password)
-	agwList, err := db.GetDevicesByType("AtlonaGateway")
+	url := strings.Trim(address, "https://")
+	url = strings.Trim(url, "http://")
 
+	url = fmt.Sprintf("https://%s:%s@%s", username, password, url)
+	client, err := kivik.New("couch", url)
 	if err != nil {
-		log.L.Fatalf("There was an error getting the AGWList: %v", err)
+		log.L.Fatalf("unable to build client: %w", err)
 	}
+
+	db := client.DB(context.TODO(), "devices")
+
+	query := map[string]interface{}{
+		"selector": map[string]interface{}{
+			"type._id": map[string]interface{}{
+				"$regex": "AtlonaGateway",
+			},
+		},
+	}
+
+	rows, err := db.Find(context.TODO(), query)
+	if err != nil {
+		log.L.Fatalf("couldn't get device")
+	}
+
+	var agwList []device
+	for rows.Next() {
+		var dev device
+		if err := rows.ScanDoc(&dev); err != nil {
+			log.L.Debugf("unable to scan in doc")
+		}
+
+		agwList = append(agwList, dev)
+	}
+
 	log.L.Debugf("Length of AGWlist: %d", len(agwList))
 
 	conns = make(map[string]*websocket.Conn)
@@ -89,16 +124,24 @@ func main() {
 
 		log.L.Debugf("Checking AGWList for changes")
 
-		db := couch.NewDB(address, username, password)
-
-		newAGWList, err := db.GetDevicesByType("AtlonaGateway")
+		rows, err := db.Find(context.TODO(), query)
 		if err != nil {
-			log.L.Debugf("there was an issue getting the AGWList: %v", err)
+			log.L.Fatalf("couldn't get device")
+		}
+
+		var newAGWList []device
+		for rows.Next() {
+			var dev device
+			if err := rows.ScanDoc(&dev); err != nil {
+				log.L.Debugf("unable to scan in doc")
+			}
+
+			newAGWList = append(newAGWList, dev)
 		}
 
 		//check to see if the length is different
 		if len(conns) < len(newAGWList) {
-			newList := make([]structs.Device, len(agwList))
+			newList := make([]device, len(agwList))
 			copy(newList, agwList)
 			log.L.Debugf("comparing the list with the map to find the new one")
 
